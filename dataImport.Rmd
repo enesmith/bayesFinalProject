@@ -1,0 +1,26 @@
+---
+title: "Untitled"
+author: "Neamat Sabry"
+date: "11/29/2020"
+output: html_document
+---
+
+## Importing SAS file 
+
+```{r}
+# install.packages(c("haven", "sas7bdat"))
+# library(sas7bdat)
+# library(haven)
+# 
+# data <- read_sas("natl2018.sas7bdat")
+# View(data)
+```
+
+## Import Stata file (preferred)
+
+```{r}
+# install.packages("foreign")
+library(foreign)
+statadata <- read.dta("natl2018.dta")
+View(statadata)
+```
