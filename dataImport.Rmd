@@ -22,5 +22,4 @@ output: html_document
 # install.packages("foreign")
 library(foreign)
 statadata <- read.dta("natl2018.dta")
-View(statadata)
 ```
