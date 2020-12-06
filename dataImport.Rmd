@@ -40,12 +40,10 @@ birth_data <- birth_data %>%
     new_payment =
       ifelse(pay %in% c(1, 4, 5, 6), 1,
         ifelse(pay == 2, 2,
-          ifelse(pay == 3, 3,
-            ifelse(pay == 8, 4, 4)
+          ifelse(pay == 3, 3, 4)
           )
         )
-      )
-  ) %>%
+      ) %>%
   select(-pay)
 ```
 
