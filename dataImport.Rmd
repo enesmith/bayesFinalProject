@@ -22,8 +22,6 @@ output: html_document
 # install.packages("foreign")
 library(foreign)
 statadata <- read.dta("natl2018.dta")
-<<<<<<< HEAD
-=======
 ```
 
 ## Wrangled Dataframe
@@ -74,5 +72,4 @@ birth_data %>%
   select(mbrace) %>%
   group_by(mbrace) %>%
   summarise(race_count = n())
->>>>>>> 4bcbc6d2c6cabfbc49c0bda6cda7ed9388009b44
 ```
