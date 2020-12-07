@@ -26,7 +26,7 @@ birth_data <- birth_data %>%
 
 ```{r}
 #Rewriting data for type of insurance and race  from numbers to words. 
-birth_data <- maternal %>%
+birth_data <- birth_data %>%
   mutate(insurance = recode(new_payment, `1` = "Government", `2` =
                                "Private",`3` = "Self Pay",`4` = "Other"), 
            race = recode(mbrace, `1` = "White", `2` = "Black", `3` =
@@ -45,7 +45,7 @@ First we fit our more complicated model, which includes an interaction term betw
 set.seed(84735)
 morbidity_model <- stan_glm(
   no_mmorb ~ race + insurance + race*insurance, 
-  data = birth, family = binomial,
+  data = morbidity_data, family = binomial,
   chains = 4, iter = 5000*2)
 ```
 
@@ -55,13 +55,18 @@ model_summary <- summary(morbidity_model)
 head(as.data.frame(model_summary),-2)
 ```
 
+```{r}
+#density plots of model 1
+mcmc_dens(morbidity_model)
+```
+
 
 Less complicated model, 
 ```{r}
 set.seed(84735)
 morbidity_model_2 <- stan_glm(
   no_mmorb ~ race + insurance, 
-  data = birth, family = binomial,
+  data = morbidity_data, family = binomial,
   chains = 4, iter = 5000*2)
 ```
 
@@ -70,3 +75,5 @@ Summary of less complicated model.
 model_summary2 <- summary(morbidity_model_2)
 head(as.data.frame(model_summary2),-2)
 ```
+
+
