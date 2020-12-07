@@ -1,0 +1,79 @@
+---
+title: "Building Logistic Regression"
+author: "Isabel Gomez"
+date: "12/6/2020"
+output: html_document
+---
+
+#loading packages
+```{r}
+library(tidyverse)
+library(rstanarm)
+library(bayesplot)
+library(bayesrules)
+library(rstan)
+```
+
+Reading in data
+```{r}
+birth_data <- read.csv("birth_data.csv")
+
+#selecting variables of interest
+birth_data <- birth_data %>%
+  select("mbrace", "new_payment", "no_mmorb")
+```
+
+
+```{r}
+#Rewriting data for type of insurance and race  from numbers to words. 
+birth_data <- birth_data %>%
+  mutate(insurance = recode(new_payment, `1` = "Government", `2` =
+                               "Private",`3` = "Self Pay",`4` = "Other"), 
+           race = recode(mbrace, `1` = "White", `2` = "Black", `3` =
+                           "American Indians and Alaska Natives",
+                        `4` = "Asian or Pacific Islander"))
+
+#changing insurance and race into factors 
+morbidity_data <-  birth_data %>% mutate(insurance = as.factor(birth_data$insurance),
+                                race = as.factor(birth_data$race)) 
+```
+
+
+
+First we fit our more complicated model, which includes an interaction term between type of health insurance and race.
+```{r logistic-regression-model}
+set.seed(84735)
+morbidity_model <- stan_glm(
+  no_mmorb ~ race + insurance + race*insurance, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r}
+model_summary <- summary(morbidity_model)
+head(as.data.frame(model_summary),-2)
+```
+
+```{r}
+#density plots of model 1
+mcmc_dens(morbidity_model)
+```
+
+
+Less complicated model, 
+```{r}
+set.seed(84735)
+morbidity_model_2 <- stan_glm(
+  no_mmorb ~ race + insurance, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Summary of less complicated model. 
+```{r}
+model_summary2 <- summary(morbidity_model_2)
+head(as.data.frame(model_summary2),-2)
+```
+
+
