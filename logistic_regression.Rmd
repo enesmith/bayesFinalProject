@@ -16,22 +16,16 @@ library(rstan)
 
 Reading in data
 ```{r}
-birth_data <- read.csv("birth_data.csv")
+birth_data1 <- read.csv("birth_data1.csv")
 
-#selecting variables of interest
-birth_data <- birth_data %>%
-  select("mbrace", "new_payment", "no_mmorb")
 ```
 
 
 ```{r}
 #Rewriting data for type of insurance and race  from numbers to words. 
-birth_data <- birth_data %>%
-  mutate(insurance = recode(new_payment, `1` = "Government", `2` =
-                               "Private",`3` = "Self Pay",`4` = "Other"), 
-           race = recode(mbrace, `1` = "White", `2` = "Black", `3` =
-                           "American Indians and Alaska Natives",
-                        `4` = "Asian or Pacific Islander"))
+birth_data <- birth_data1 %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = 'AAno insurance'), 
+           race = recode(new_race, `1` = "Non-white", `0` = "AAWhite"))
 
 #changing insurance and race into factors 
 morbidity_data <-  birth_data %>% mutate(insurance = as.factor(birth_data$insurance),
@@ -40,11 +34,11 @@ morbidity_data <-  birth_data %>% mutate(insurance = as.factor(birth_data$insura
 
 
 
-First we fit our more complicated model, which includes an interaction term between type of health insurance and race.
+First we fit our most simple model, which includes health insurance and race, adjusting for age and marital status.
 ```{r logistic-regression-model}
 set.seed(84735)
 morbidity_model <- stan_glm(
-  no_mmorb ~ race + insurance + race*insurance, 
+  no_mmorb ~ race + insurance + mager9 + dmar, 
   data = morbidity_data, family = binomial,
   chains = 4, iter = 5000*2)
 ```
@@ -56,24 +50,53 @@ head(as.data.frame(model_summary),-2)
 ```
 
 ```{r}
-#density plots of model 1
-mcmc_dens(morbidity_model)
+#means
+exp(0.39084452) #race
+exp(-0.66459581) #insurance
 ```
 
+Being non-white increases the typical odds of maternal morbidity by an average of 1.47.
 
-Less complicated model, 
+Having insurance decreases the typical odds of maternal morbidity by an average of 0.5144.
+
+```{r}
+#credible intervals
+exp(c(0.08348851, 0.70422622)) #race
+exp(c(-1.36319390, -0.01304253)) #insurance
+```
+
+For a non-white person, there is an 80% posterior chance that the typical increase in the odds of maternal morbidity is between 1.08 and 2.02.
+
+For a person with insurance, there is an 80% posterior chance that the typical decrease in the odds of maternal morbidity is between 0.25 and 0.98.
+
+```{r}
+#density and trace plots of model 1
+mcmc_dens(morbidity_model)
+mcmc_trace(morbidity_model)
+```
+
+Slightly more complicated model with interaction term between race and insurance. 
 ```{r}
 set.seed(84735)
 morbidity_model_2 <- stan_glm(
-  no_mmorb ~ race + insurance, 
+  no_mmorb ~ race + insurance + mager9 + dmar + race*insurance, 
   data = morbidity_data, family = binomial,
   chains = 4, iter = 5000*2)
 ```
 
-Summary of less complicated model. 
+Summary of interaction model. 
 ```{r}
 model_summary2 <- summary(morbidity_model_2)
 head(as.data.frame(model_summary2),-2)
 ```
+
+```{r}
+#density and trace plots of model 2
+mcmc_dens(morbidity_model_2)
+mcmc_trace(morbidity_model_2)
+```
+
+
+
 
 
