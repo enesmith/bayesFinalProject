@@ -29,6 +29,8 @@ statadata <- read.dta("natl2018.dta copy")
 library(tidyverse)
 set.seed(84735)
 birth_data <- sample_n(statadata, 10000)
+
+write.csv(birth_data, "birth_data_10,000.csv")
 ```
 
 ```{r}
