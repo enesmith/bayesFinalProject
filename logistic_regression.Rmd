@@ -22,14 +22,14 @@ birth_data1 <- read.csv("birth_data1.csv")
 
 
 ```{r}
-#Rewriting data for type of insurance and race  from numbers to words. 
-birth_data <- birth_data1 %>%
+#Rewriting data for type of insurance and race from numbers to words. 
+birth_data2 <- birth_data1 %>%
   mutate(insurance = recode(new_payment, `1` = "insurance", `0` = 'AAno insurance'), 
            race = recode(new_race, `1` = "Non-white", `0` = "AAWhite"))
 
 #changing insurance and race into factors 
-morbidity_data <-  birth_data %>% mutate(insurance = as.factor(birth_data$insurance),
-                                race = as.factor(birth_data$race)) 
+morbidity_data <-  birth_data2 %>% mutate(insurance = as.factor(birth_data2$insurance),
+                                race = as.factor(birth_data2$race)) 
 ```
 
 
