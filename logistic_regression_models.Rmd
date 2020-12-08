@@ -1,0 +1,205 @@
+---
+title: "complicated_regression"
+author: "Isabel Gomez"
+date: "12/7/2020"
+output: html_document
+---
+
+#loading packages and reading csv
+```{r}
+library(tidyverse)
+library(rstanarm)
+library(bayesplot)
+library(bayesrules)
+library(rstan)
+
+#loading csv need to put your own pathway in
+birth_data1 <-read_csv("birth_data_10,000.csv") #csv is too large to put on github
+```
+
+```{r reading- data, include=FALSE}
+#selecting variables of interest
+birth_data <- birth_data1 %>%
+  select("mbrace", "pay", "no_mmorb", "mager9", "dmar")
+```
+
+#Exploring the data
+```{r}
+#count of unknown insurance
+birth_data %>%
+  filter(pay == 8) %>%
+  count()
+
+#count of unknown morbidity and insurance
+birth_data %>%
+  filter(pay == 8 | pay == 9 |no_mmorb == 9) %>%
+  count()
+
+#count of unknown morbidity
+birth_data %>%
+  filter(no_mmorb == 9) %>%
+  count()
+```
+
+
+#Data Wrangling for white vs non-white and insurance vs no insurance
+```{r binary-data-wrangling}
+#Creating data frame with columns of interest
+birth_binary <- birth_data %>%
+  select(mbrace, pay, no_mmorb, mager9, dmar) %>%
+  filter(no_mmorb != 9 | pay != 8 | pay !=9) %>% #filtering out unknowns and others
+  mutate(
+    new_payment =
+     ifelse(pay %in% c(1, 2, 4, 5, 6), 1, 0) #changing insurance into insur vs no insur
+         ) %>% 
+   mutate(new_race = 
+            ifelse(mbrace %in% c(2, 3, 4), 1, 0)) #changing race into non-white vs white
+
+#Rewriting data for type of insurance and race from numbers to words. 
+birth_binary  <- birth_binary %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = 'AAno insurance'), 
+           race = recode(new_race, `1` = "Non-white", `0` = "AAWhite"))
+
+#changing insurance and race into factors 
+morbidity_binary_data <-  birth_binary %>% mutate(insurance =
+                                                    as.factor(birth_data2$insurance),
+                                                  race = as.factor(birth_data2$race))
+```
+
+#Data wrangling for model with all racial categories
+```{r race-data-wrangling}
+
+#Creating data frame with columns of interest
+race_data <- birth_data %>%
+  filter(no_mmorb != 9 | pay !=8 | pay != 9 ) %>% 
+  mutate(new_payment = if_else(pay %in% c(1, 2, 4, 5, 6), 1,0)
+    )
+#Rewriting data for type of insurance and race from numbers to words. 
+morbidity_data <-race_data %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = "AA no insurance"), 
+           race = recode(mbrace, `1` = "AAWhite", `2` = "Black", `3` = "American Indians
+                         and Alaska Natives", `4` = "Asian or Pacific Islander"))
+
+#changing insurance and race into factors 
+morbidity_data <- morbidity_data %>%
+          mutate(insurance = as.factor(birth_data1$insurance ),
+                                race = as.factor(birth_data1$race)) 
+```
+
+#Simple Model
+
+First we fit our most simple model, which includes health insurance and race, adjusting for age and marital status.
+```{r logistic-regression-simple-model}
+set.seed(84735)
+morbidity_simple_model <- stan_glm(
+  no_mmorb ~ race + insurance + mager9 + dmar, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r simple-model-summary}
+simple_model_summary <- summary(morbidity_simple_model)
+head(as.data.frame(simple_model_summary),-2)
+```
+
+```{r simple-model-odds}
+#means
+exp(0.39084452) #race
+exp(-0.66459581) #insurance
+```
+
+Being non-white increases the typical odds of maternal morbidity by an average of 1.47.
+
+Having insurance decreases the typical odds of maternal morbidity by an average of 0.5144.
+
+```{r simple-model-intervals}
+#credible intervals
+exp(c(0.08348851, 0.70422622)) #race
+exp(c(-1.36319390, -0.01304253)) #insurance
+```
+
+For a non-white person, there is an 80% posterior chance that the typical increase in the odds of maternal morbidity is between 1.08 and 2.02.
+
+For a person with insurance, there is an 80% posterior chance that the typical decrease in the odds of maternal morbidity is between 0.25 and 0.98.
+
+```{r simple-model-dens}
+#density and trace plots of simple model
+mcmc_dens(morbidity_simple_model)
+mcmc_trace(morbidity_simple_model)
+```
+
+#Complicated Model
+
+We wil not interpret the results but just use this to perform comparison tests to see if this is  better than the simple model. If it's better then we could interpret. 
+
+Slightly more complicated model with interaction term between race and insurance. 
+```{r complicated-model}
+set.seed(84735)
+complicated_morbidity_model <-  no_mmorb ~ race + insurance + mager9 + dmar +
+  race*insurance, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Summary of interaction model. 
+```{r complicated-model-summary}
+complicated_model_summary <- summary(complicated_morbidity_model)
+head(as.data.frame(complicated_model_summary),-2)
+```
+
+```{r complicated-model-dens}
+#density and trace plots of complicated model
+mcmc_dens(complicated_morbidity_model)
+mcmc_trace(complicated_morbidity_model)
+```
+
+
+
+# Race Model
+```{r logistic-regression-model}
+set.seed(84735)
+race_morbidity_model <- stan_glm(
+  no_mmorb ~ race + insurance + mager9 + dmar, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r race-model-summary}
+race_model_summary <- summary(race_morbidity_model)
+head(as.data.frame(race_model_summary),-2)
+```
+
+```{r odds-of-mean}
+#mean
+exp(c(-0.5362581 ,0.0613946 , 0.7050168)) #native american, asian, black
+exp(c(-0.7248291)) #insurance
+```
+Being Native American decreases the typical odds of maternal morbidity by an average of 0.59.
+Being Asian or Pacific Islander increases the typical odds of maternal morbidity by an average of 1.06.
+Being Black increases the the typical odds of maternal morbidity by an average of 2.02.
+Having insurances decreases the typical of maternal morbidity by an average of 0.48. 
+
+```{r odds-of-interval}
+#credible intervals
+exp(c(-1.30355734, 0.30452888	)) #native american
+exp(c(-0.44791471, -0.60235732)) #asian or pacific islander
+exp(c(0.30438839,1.11749202)) #black
+exp(c(-1.55846819, 0.03313465)) #insurance
+```
+
+For a Native Ameircan person, there is an 80% posterior chance that the typical increase in the odds of maternal morbidity is between 0.27 and 1.36.
+
+For an Asian person, there is an 80% posterior chance that the typical increase in the odds of maternal morbidity is between 0.64 and 0.55.
+
+For a Black person, there iss an 80% posterior chance that the typical increase in the odds of maternal morbidity it between 1.36 and 3.06. 
+
+For a person with insurance, there is an 80% posterior chance that the typical decrease in the odds of maternal morbidity is between  0.21 and 1.03.
+
+
+```{r race-model-density}
+#density and trace plots of race model
+mcmc_dens(race_morbidity_model)
+mcmc_trace(race_morbidity_model)
+```
