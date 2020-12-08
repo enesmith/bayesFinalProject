@@ -34,7 +34,7 @@ write.csv(birth_data, "birth_data_10,000.csv")
 ```
 
 ```{r}
-# create new_payment variable, 1 = govt. program, 2 = private insurance, 3 = self pay, 4 = other
+# create new_payment variable, 1 = insurance, 0 = no insurance, and new_race variable, 1 = non white and 0 = white
 birth_data1 <- birth_data %>%
   select(mbrace, pay, no_mmorb, mager9, dmar) %>%
   filter(no_mmorb != 9, pay != c(8,9)) %>%
