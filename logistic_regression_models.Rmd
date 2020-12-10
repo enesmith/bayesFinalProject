@@ -49,7 +49,8 @@ birth_binary <- birth_data %>%
   select(mbrace, pay, no_mmorb, mager9, dmar) %>%
   filter(no_mmorb != 9) %>%
   filter(pay != 9) %>% 
-  filter(pay != 8) %>% #filtering out unknowns and others
+  filter(pay != 8) %>% #filtering out unknowns and others 
+  drop_na() %>%
   mutate(
     new_payment =
      ifelse(pay %in% c(1, 2, 4, 5, 6), 1, 0) #changing insurance into insur vs no insur
@@ -79,7 +80,8 @@ race_data <- birth_data %>%
   filter(pay != 9) %>% 
   filter(pay != 8) %>% 
   mutate(new_payment = if_else(pay %in% c(1, 2, 4, 5, 6), 1,0)
-    )
+    ) %>%
+  drop_na() 
 #Rewriting data for type of insurance and race from numbers to words. 
 morbidity_data <-race_data %>%
   mutate(insurance = recode(new_payment, `1` = "insurance", `0` = "AA no insurance"), 
