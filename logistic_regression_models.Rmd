@@ -140,7 +140,7 @@ mcmc_trace(morbidity_simple_model)
 
 #Complicated Model
 
-We wil not interpret the results but just use this to perform comparison tests to see if this is  better than the simple model. If it's better then we could interpret. 
+We will not interpret the results but just use this to perform comparison tests to see if this is  better than the simple model. If it's better then we could interpret. 
 
 Slightly more complicated model with interaction term between binary variables of race and insurance. 
 ```{r complicated-model}
