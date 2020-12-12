@@ -217,3 +217,12 @@ Adjusting for age, marital status, and race, there is an 80% posterior probabili
 mcmc_dens(race_morbidity_model)
 mcmc_trace(race_morbidity_model)
 ```
+
+#comparison of models using ELPD
+```{r}
+loo_1 <- loo(morbidity_simple_model)
+loo_2 <- loo(complicated_morbidity_model)
+loo_3 <- loo(race_morbidity_model)
+loo_compare(loo_1, loo_2, loo_3)
+```
+
