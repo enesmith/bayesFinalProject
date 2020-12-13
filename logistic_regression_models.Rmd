@@ -95,6 +95,62 @@ morbidity_data <- morbidity_data %>%
           marital = as.factor(morbidity_data$dmar))  
 ```
 
+
+#Descriptive Statistics
+```{r}
+# morbidity counts, 0 means morbidity, 1 means no morbidity
+morbidity_binary_data %>%
+  select(no_mmorb) %>%
+  group_by(no_mmorb) %>%
+  summarize(mmorb_count = n())
+
+#morbidity by binary race
+morbidity_binary_data %>% 
+  select(no_mmorb, race) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(race) %>% 
+  summarize(count = n())
+
+#morbidity by categorical race
+morbidity_data %>% 
+  select(no_mmorb, race) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(race) %>% 
+  summarize(count = n())
+
+#morbidity by insurance
+morbidity_data %>% 
+  select(no_mmorb, insurance) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(insurance) %>% 
+  summarize(count = n())
+```
+
+```{r}
+# payment counts
+morbidity_binary_data %>%
+  select(insurance) %>%
+  group_by(insurance) %>%
+  summarise(pay_count = n())
+```
+
+```{r}
+# binary race counts
+morbidity_binary_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+
+```{r}
+# categorical race counts
+morbidity_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+
+
 #Simple Model
 
 First we fit our most simple model, which includes the binary variables of health insurance and race, adjusting for age and marital status.
@@ -118,9 +174,9 @@ exp(0.36729956) #race
 exp(-0.71808914) #insurance
 ```
 
-Adjusting for age, marital status, and insurance, the odds that a non-white person experiences maternal morbidity is an average of 1.44 times the odds that a white person experiences morbidity.
+Adjusting for age, marital status, and insurance, the odds that a non-white person does not experience maternal morbidity is an average of 1.44 times the odds that a white person does not experience morbidity.
 
-Adjusting for age, marital status, and race, the odds that someone with insurance experiences maternal morbidity is an average of 0.487 times the odds that someone without insurance experiences morbidity.
+Adjusting for age, marital status, and race, the odds that someone with insurance does not experience maternal morbidity is an average of 0.487 times the odds that someone without insurance does not experience morbidity.
 
 ```{r simple-model-intervals}
 #credible intervals
@@ -128,9 +184,9 @@ exp(c(0.06499287	, 0.67682544)) #race
 exp(c(-1.55097967, 0.04133771)) #insurance
 ```
 
-Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a non-white person experiences maternal morbidity is between 1.06 and 1.96 times the odds that a white person experiences morbidity.
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a non-white person does not experience maternal morbidity is between 1.06 and 1.96 times the odds that a white person does not experience morbidity.
 
-Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that someone who has insurance experiences maternal morbidity is between 0.21 and 1.04 times the odds that someone who does not have insurance experiences morbidity.
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that someone who has insurance does not experience maternal morbidity is between 0.21 and 1.04 times the odds that someone who does not have insurance does not experience morbidity.
 
 ```{r simple-model-dens}
 #density and trace plots of simple model
@@ -162,7 +218,6 @@ head(as.data.frame(complicated_model_summary),-2)
 mcmc_dens(complicated_morbidity_model)
 mcmc_trace(complicated_morbidity_model)
 ```
-
 
 
 # Race Model
