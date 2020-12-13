@@ -1,0 +1,179 @@
+---
+title: "Posterior Prediction"
+output: html_document
+---
+# Posterior Predictions of Simple Model
+
+## For White with Insurance:
+```{r}
+# Posterior predictions on log(odds) scale
+logodds_prediction_w_i <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "insurance", age = "4", marital = "1"),
+transform = FALSE)
+```
+
+```{r}
+# Posterior predictions on probability scale
+prob_prediction_w_i <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "insurance", age = "4", marital = "1"),
+transform = TRUE)
+```
+
+```{r}
+# Posterior predictions of binary outcome
+set.seed(84735)
+binary_prediction_w_i <- posterior_predict(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "insurance", age = "4", marital = "1"))
+```
+
+Putting all of the posterior plausible predictions together: 
+
+```{r}
+mcmc_dens(logodds_prediction_w_i) + labs(x = "log(odds)")
+mcmc_dens(prob_prediction_w_i) + labs(x = "probability")
+mcmc_hist(binary_prediction_w_i) + labs(x = "Y")
+```
+
+For white mothers with insurance, the logistic regression model suggests that probability of maternal pregnancy risk is likely between approximately 0.14 and 0.18. And predictions of no maternal pregnancy risk (Y = 0) is much more likely than maternal pregnancy risk (Y = 1). 
+
+```{r}
+# Summarize the posterior predictions of Y
+table(binary_prediction_w_i)
+colMeans(binary_prediction_w_i)
+
+```
+
+Of the 20,000 posterior predictions of Y, 16.18% called for maternal pregnancy risk for white mothers with insurance. 
+
+
+## For White without Insurance:
+```{r}
+# Posterior predictions on log(odds) scale
+logodds_prediction_w_ni <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "AAno insurance", age = "4", marital = "1"),
+transform = FALSE)
+```
+
+```{r}
+# Posterior predictions on probability scale
+# White with insurance 
+prob_prediction_w_ni <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "AAno insurance", age = "4", marital = "1"),
+transform = TRUE)
+```
+
+```{r}
+# Posterior predictions of binary outcome
+set.seed(84735)
+binary_prediction_w_ni <- posterior_predict(
+risk_simple_model,
+newdata = data.frame(race = "AAWhite", insurance = "AAno insurance", age = "4", marital = "1"))
+```
+
+```{r}
+mcmc_dens(logodds_prediction_w_ni) + labs(x = "log(odds)")
+mcmc_dens(prob_prediction_w_ni) + labs(x = "probability")
+mcmc_hist(binary_prediction_w_ni) + labs(x = "Y")
+```
+
+For white mothers with without insurance, the logistic regression model suggests that probability of maternal pregnancy risk is likely between approximately 0.075 and 0.125. And predictions of no maternal pregnancy risk (Y = 0) is much more likely than maternal pregnancy risk (Y = 1). 
+
+```{r}
+# Summarize the posterior predictions of Y
+table(binary_prediction_w_ni)
+colMeans(binary_prediction_w_ni)
+
+```
+
+Of the 20,000 posterior predictions of Y, 9.65% called for maternal pregnancy risk for whitee mothers without insurance. 
+
+## For non-White Insurance:
+```{r}
+# Posterior predictions on log(odds) scale
+logodds_prediction_nw_i <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "insurance", age = "4", marital = "1"),
+transform = FALSE)
+```
+
+```{r}
+# Posterior predictions on probability scale
+# White with insurance 
+prob_prediction_nw_i <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "insurance", age = "4", marital = "1"),
+transform = TRUE)
+```
+
+```{r}
+set.seed(84735)
+# Posterior predictions of binary outcome
+binary_prediction_nw_i <- posterior_predict(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "insurance", age = "4", marital = "1"))
+```
+
+```{r}
+mcmc_dens(logodds_prediction_nw_i) + labs(x = "log(odds)")
+mcmc_dens(prob_prediction_nw_i) + labs(x = "probability")
+mcmc_hist(binary_prediction_nw_i) + labs(x = "Y")
+```
+
+For non-white mothers with insurance, the logistic regression model suggests that probability of maternal pregnancy risk is likely between approximately 0.18 and 0.24. Thus, predictions of no maternal pregnancy risk (Y = 0) is much more likely than maternal pregnancy risk (Y = 1). 
+
+```{r}
+# Summarize the posterior predictions of Y
+table(binary_prediction_nw_i)
+colMeans(binary_prediction_nw_i)
+
+```
+
+Of the 20,000 posterior predictions of Y, 20.415% called for maternal pregnancy risk for non-white mothers with insurance. 
+
+## For non-White without Insurance:
+```{r}
+# Posterior predictions on log(odds) scale
+logodds_prediction_nw_ni <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "AAno insurance", age = "4", marital = "1"),
+transform = FALSE)
+```
+
+```{r}
+# Posterior predictions on probability scale
+# White with insurance 
+prob_prediction_nw_ni <- posterior_linpred(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "AAno insurance", age = "4", marital = "1"),
+transform = TRUE)
+```
+
+```{r}
+set.seed(84735)
+# Posterior predictions of binary outcome
+binary_prediction_nw_ni <- posterior_predict(
+risk_simple_model,
+newdata = data.frame(race = "Non-white", insurance = "AAno insurance", age = "4", marital = "1"))
+```
+
+```{r}
+mcmc_dens(logodds_prediction_nw_ni) + labs(x = "log(odds)")
+mcmc_dens(prob_prediction_nw_ni) + labs(x = "probability")
+mcmc_hist(binary_prediction_nw_ni) + labs(x = "Y")
+```
+
+For non-white mothers without insurance, the logistic regression model suggests that probability of maternal pregnancy risk is likely between approximately 0.05 and 0.17. Thus, predictions of no maternal pregnancy risk (Y = 0) is much more likely than maternal pregnancy risk (Y = 1). 
+
+```{r}
+# Summarize the posterior predictions of Y
+table(binary_prediction_nw_ni)
+colMeans(binary_prediction_nw_ni)
+```
+
+Of the 20,000 posterior predictions of Y, 12.205% called for maternal pregnancy risk for non-white mothers without insurancee.  
+
