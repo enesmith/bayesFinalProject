@@ -12,7 +12,9 @@ We used three Bayesian multivariate logistic regressions to model pregnancy risk
 # Code
 The two rmd files which are of most importance to the study are **pregnancy_risk_exploration.Rmd**, in which we wrangle the data and build our three separate models for pregnancy risk factors, and **posterior_prediction.Rmd**, in which we construct the posterior predictive model for increased risk and generate predictions.
 
-In dataImport.Rmd, we load the data from the CDC and take a random sample of 10,000 births, which we use in pregnancy_risk_exploration.Rmd to conduct our study. The other files in our repo (logistic_regression.Rmd, logistic_regression_models.Rmd, and birth_data1.csv) are not relevant to our final study because they utilize a different response variable than pregnancy risk factors. Originally we wanted to build models with maternal morbidity as the response variable, but the number of mothers in our data set who experienced maternal morbidity was too small to perform legitimate analysis on. Thus, we switched to modeling whether a mother exhibited pregnancy risk factors, as illustrated in pregnancy_risk_exploration.Rmd and posterior_prediction.Rmd.
+In dataImport.Rmd, we load the data from the CDC and take a random sample of 10,000 births, which we use in pregnancy_risk_exploration.Rmd to conduct our study. 
+
+The other files in our repo (logistic_regression.Rmd, logistic_regression_models.Rmd, and birth_data1.csv) are not relevant to our final study because they utilize a different response variable than pregnancy risk factors. Originally we wanted to build models with maternal morbidity as the response variable, but the number of mothers in our data set who experienced maternal morbidity was too small to perform legitimate analysis on. Thus, we switched to modeling whether a mother exhibited pregnancy risk factors, as illustrated in pregnancy_risk_exploration.Rmd and posterior_prediction.Rmd.
 
 
 
