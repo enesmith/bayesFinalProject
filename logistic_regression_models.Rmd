@@ -1,0 +1,283 @@
+---
+title: "complicated_regression"
+author: "Isabel Gomez"
+date: "12/7/2020"
+output: html_document
+---
+
+#loading packages and reading csv
+```{r}
+library(tidyverse)
+library(rstanarm)
+library(bayesplot)
+library(bayesrules)
+library(rstan)
+
+#loading csv need to put your own pathway in
+birth_data1 <-read_csv("birth_data_10,000.csv") #csv is too large to put on github
+```
+
+```{r reading- data, include=FALSE}
+#selecting variables of interest
+birth_data <- birth_data1 %>%
+  select("mbrace", "pay", "no_mmorb", "mager9", "dmar")
+```
+
+#Exploring the data
+```{r}
+#count of unknown insurance
+birth_data %>%
+  filter(pay == 8) %>%
+  count()
+
+#count of unknown morbidity and insurance
+birth_data %>%
+  filter(pay == 8 | pay == 9 |no_mmorb == 9) %>%
+  count()
+
+#count of unknown morbidity
+birth_data %>%
+  filter(no_mmorb == 9) %>%
+  count()
+```
+
+
+#Data Wrangling for white vs non-white and insurance vs no insurance
+```{r binary-data-wrangling}
+#Creating data frame with columns of interest
+birth_binary <- birth_data %>%
+  select(mbrace, pay, no_mmorb, mager9, dmar) %>%
+  filter(no_mmorb != 9) %>%
+  filter(pay != 9) %>% 
+  filter(pay != 8) %>% #filtering out unknowns and others 
+  drop_na() %>%
+  mutate(
+    new_payment =
+     ifelse(pay %in% c(1, 2, 4, 5, 6), 1, 0) #changing insurance into insur vs no insur
+         ) %>% 
+   mutate(new_race = 
+            ifelse(mbrace %in% c(2, 3, 4), 1, 0)) #changing race into non-white vs white
+
+#Rewriting data for type of insurance and race from numbers to words. 
+birth_binary  <- birth_binary %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = 'AAno insurance'), 
+           race = recode(new_race, `1` = "Non-white", `0` = "AAWhite"))
+
+#changing insurance and race into factors 
+morbidity_binary_data <-  birth_binary %>% 
+  mutate(insurance = as.factor(birth_binary$insurance),
+         race = as.factor(birth_binary$race),
+         age = as.factor(birth_binary$mager9),
+         marital = as.factor(birth_binary$dmar))
+```
+
+#Data wrangling for model with all racial categories
+```{r race-data-wrangling}
+
+#Creating data frame with columns of interest
+race_data <- birth_data %>%
+  filter(no_mmorb != 9) %>%
+  filter(pay != 9) %>% 
+  filter(pay != 8) %>% 
+  mutate(new_payment = if_else(pay %in% c(1, 2, 4, 5, 6), 1,0)
+    ) %>%
+  drop_na() 
+#Rewriting data for type of insurance and race from numbers to words. 
+morbidity_data <-race_data %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = "AA no insurance"), 
+           race = recode(mbrace, `1` = "AAWhite", `2` = "Black", `3` = "American Indians and Alaska Natives", `4` = "Asian or Pacific Islander"))
+
+#changing insurance and race into factors 
+morbidity_data <- morbidity_data %>%
+   mutate(insurance = as.factor(morbidity_data$insurance),
+          race = as.factor(morbidity_data$race),
+          age = as.factor(morbidity_data$mager9),
+          marital = as.factor(morbidity_data$dmar))  
+```
+
+
+#Descriptive Statistics
+```{r}
+# morbidity counts, 0 means morbidity, 1 means no morbidity
+morbidity_binary_data %>%
+  select(no_mmorb) %>%
+  group_by(no_mmorb) %>%
+  summarize(mmorb_count = n())
+
+#morbidity by binary race
+morbidity_binary_data %>% 
+  select(no_mmorb, race) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(race) %>% 
+  summarize(count = n())
+
+#morbidity by categorical race
+morbidity_data %>% 
+  select(no_mmorb, race) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(race) %>% 
+  summarize(count = n())
+
+#morbidity by insurance
+morbidity_data %>% 
+  select(no_mmorb, insurance) %>% 
+  filter(no_mmorb == 0) %>% 
+  group_by(insurance) %>% 
+  summarize(count = n())
+```
+
+```{r}
+# payment counts
+morbidity_binary_data %>%
+  select(insurance) %>%
+  group_by(insurance) %>%
+  summarise(pay_count = n())
+```
+
+```{r}
+# binary race counts
+morbidity_binary_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+
+```{r}
+# categorical race counts
+morbidity_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+
+
+#Simple Model
+
+First we fit our most simple model, which includes the binary variables of health insurance and race, adjusting for age and marital status.
+```{r logistic-regression-simple-model}
+set.seed(84735)
+morbidity_simple_model <- stan_glm(
+  no_mmorb ~ race + insurance + age + marital, 
+  data = morbidity_binary_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r simple-model-summary}
+simple_model_summary <- summary(morbidity_simple_model)
+head(as.data.frame(simple_model_summary),-2)
+```
+
+```{r simple-model-odds}
+#means
+exp(0.36729956) #race
+exp(-0.71808914) #insurance
+```
+
+Adjusting for age, marital status, and insurance, the odds that a non-white person does not experience maternal morbidity is an average of 1.44 times the odds that a white person does not experience morbidity.
+
+Adjusting for age, marital status, and race, the odds that someone with insurance does not experience maternal morbidity is an average of 0.487 times the odds that someone without insurance does not experience morbidity.
+
+```{r simple-model-intervals}
+#credible intervals
+exp(c(0.06499287	, 0.67682544)) #race
+exp(c(-1.55097967, 0.04133771)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a non-white person does not experience maternal morbidity is between 1.06 and 1.96 times the odds that a white person does not experience morbidity.
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that someone who has insurance does not experience maternal morbidity is between 0.21 and 1.04 times the odds that someone who does not have insurance does not experience morbidity.
+
+```{r simple-model-dens}
+#density and trace plots of simple model
+mcmc_dens(morbidity_simple_model)
+mcmc_trace(morbidity_simple_model)
+```
+
+#Complicated Model
+
+We will not interpret the results but just use this to perform comparison tests to see if this is  better than the simple model. If it's better then we could interpret. 
+
+Slightly more complicated model with interaction term between binary variables of race and insurance. 
+```{r complicated-model}
+set.seed(84735)
+complicated_morbidity_model <- stan_glm(
+  no_mmorb ~ race + insurance + age + marital + race*insurance, 
+  data = morbidity_binary_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Summary of interaction model. 
+```{r complicated-model-summary}
+complicated_model_summary <- summary(complicated_morbidity_model)
+head(as.data.frame(complicated_model_summary),-2)
+```
+
+```{r complicated-model-dens}
+#density and trace plots of complicated model
+mcmc_dens(complicated_morbidity_model)
+mcmc_trace(complicated_morbidity_model)
+```
+
+
+# Race Model
+```{r logistic-regression-model}
+set.seed(84735)
+race_morbidity_model <- stan_glm(
+  no_mmorb ~ race + insurance + age + marital, 
+  data = morbidity_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r race-model-summary}
+race_model_summary <- summary(race_morbidity_model)
+head(as.data.frame(race_model_summary),-2)
+```
+
+```{r odds-of-mean}
+#mean
+exp(c(-0.49408245, 0.06471849 , 0.68447106)) #native american, asian, black
+exp(c(-0.72164298)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, the odds that someone who is Native American experiences maternal morbidity is an average of 0.69 times the odds that someone who is white experiences morbidity.
+
+Adjusting for age, marital status, and insurance, the odds that someone who is Asian or Pacific Islander experiences maternal morbidity is an average of 1.06 times the odds that someone who is white experiences morbidity.
+
+Adjusting for age, marital status, and insurance, the odds that someone who is 
+Black experiences maternal morbidity is an average of 1.98 times the odds that someone who is white experiences morbidity.
+
+Adjusting for age, marital status, and race, the odds that someone with insurance experiences maternal morbidity is an average of 0.485 times the odds that someone without insurance experiences morbidity.
+
+```{r odds-of-interval}
+#credible intervals
+exp(c(-1.2704155, 0.35641770)) #native american
+exp(c(-0.4434041, 0.59677159)) #asian or pacific islander
+exp(c(0.2830783, 1.09873140)) #black
+exp(c(-1.5612151, 0.03870364)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a Native American experiences maternal morbidity is between 0.28 and 1.42 times the odds that a white person experiences morbidity.
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that an Asian person or Pacific Islander experiences maternal morbidity is between 0.64 and 1.81 times the odds that someone who is white experiences morbidity.
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a Black person experiences maternal morbidity is between 1.32 and 3 times the odds that a white person experiences morbidity.
+
+Adjusting for age, marital status, and race, there is an 80% posterior probability that the odds that someone with insurance experiences maternal morbidity is between 0.21 and 1.03 times the odds that someone without insurance experiences morbidity.
+
+
+```{r race-model-density}
+#density and trace plots of race model
+mcmc_dens(race_morbidity_model)
+mcmc_trace(race_morbidity_model)
+```
+
+#comparison of models using ELPD
+```{r}
+loo_1 <- loo(morbidity_simple_model)
+loo_2 <- loo(complicated_morbidity_model)
+loo_3 <- loo(race_morbidity_model)
+loo_compare(loo_1, loo_2, loo_3)
+```
+

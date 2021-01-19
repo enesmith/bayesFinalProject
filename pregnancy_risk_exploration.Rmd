@@ -1,0 +1,285 @@
+---
+title: "pregnancy_risk_exploration"
+author: "Elisabeth Nesmith"
+date: "12/12/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(rstanarm)
+library(bayesplot)
+library(bayesrules)
+library(rstan)
+
+#loading csv need to put your own pathway in
+birth_data1 <-read_csv("birth_data_10,000.csv")
+```
+
+#Selecting variables of interest 
+```{r}
+pregnancy_data <- birth_data1 %>%
+  select("mbrace", "pay", "rf_pdiab", "rf_gdiab", "rf_phype", "rf_ghype", "rf_ehype", "rf_ppterm", "mager9", "dmar")
+
+#filter unknowns and make pregnancy risk one variable
+pregnancy_data1 <- pregnancy_data %>% 
+  filter(rf_pdiab != "U") %>% 
+  filter(rf_gdiab != "U") %>%
+  filter(rf_phype != "U") %>% 
+  filter(rf_ghype != "U") %>%
+  filter(rf_ehype != "U") %>%
+  filter(rf_ppterm != "U") %>% 
+  mutate(pregnancy_risk = 
+           ifelse(rf_pdiab == "Y", 1, 
+           ifelse(rf_gdiab == "Y", 1,
+           ifelse(rf_phype == "Y", 1,
+           ifelse(rf_ghype == "Y", 1,
+           ifelse(rf_ehype == "Y", 1,
+           ifelse(rf_ppterm == "Y", 1, 0)))))))
+  
+```
+
+
+```{r}
+#check counts of people who are at increased risk
+pregnancy_data1 %>%
+  select(pregnancy_risk) %>%
+  group_by(pregnancy_risk) %>%
+  summarize(count = n())
+```
+
+#Data Wrangling for white vs non-white and insurance vs no insurance
+```{r}
+#Creating data frame with columns of interest
+pregnancy_binary <- pregnancy_data1 %>%
+  select(mbrace, pay, pregnancy_risk, mager9, dmar) %>%
+  filter(pay != 9) %>% 
+  filter(pay != 8) %>% #filtering out unknowns and others 
+  drop_na() %>%
+  mutate(
+    new_payment =
+     ifelse(pay %in% c(1, 2, 4, 5, 6), 1, 0) #changing insurance into insur vs no insurance
+         ) %>% 
+   mutate(new_race = 
+            ifelse(mbrace %in% c(2, 3, 4), 1, 0)) #changing race into non-white vs white
+
+#Rewriting data for type of insurance and race from numbers to words. 
+pregnancy_binary  <- pregnancy_binary %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = 'AAno insurance'), 
+           race = recode(new_race, `1` = "Non-white", `0` = "AAWhite"))
+
+#changing insurance, age, marital status, and race into factors 
+pregnancy_binary_data <- pregnancy_binary %>% 
+  mutate(insurance = as.factor(pregnancy_binary$insurance),
+         race = as.factor(pregnancy_binary$race),
+         age = as.factor(pregnancy_binary$mager9),
+         marital = as.factor(pregnancy_binary$dmar))
+```
+
+#Data wrangling for model with all racial categories
+```{r race-data-wrangling}
+
+#Creating data frame with columns of interest
+race_data <- pregnancy_data1 %>%
+  select(mbrace, pay, pregnancy_risk, mager9, dmar) %>%
+  filter(pay != 9) %>% 
+  filter(pay != 8) %>% 
+  mutate(new_payment = if_else(pay %in% c(1, 2, 4, 5, 6), 1,0)
+    ) %>%
+  drop_na() 
+
+#Rewriting data for type of insurance and race from numbers to words. 
+preg_risk_data <-race_data %>%
+  mutate(insurance = recode(new_payment, `1` = "insurance", `0` = "AA no insurance"), 
+           race = recode(mbrace, `1` = "AAWhite", `2` = "Black", `3` = "American Indians and Alaska Natives", `4` = "Asian or Pacific Islander"))
+
+#changing insurance and race into factors 
+preg_risk_data <- preg_risk_data %>%
+   mutate(insurance = as.factor(preg_risk_data$insurance),
+          race = as.factor(preg_risk_data$race),
+          age = as.factor(preg_risk_data$mager9),
+          marital = as.factor(preg_risk_data$dmar))
+```
+
+#Descriptive Statistics
+```{r}
+# pregnancy risk counts, 0 means no sign of risk, 1 means risk
+pregnancy_binary_data %>%
+  select(pregnancy_risk) %>%
+  group_by(pregnancy_risk) %>%
+  summarize(count = n())
+
+#risk by binary race
+pregnancy_binary_data %>%
+  select(pregnancy_risk, race) %>%
+  filter(pregnancy_risk == 1) %>% 
+  group_by(race) %>%
+  summarize(count = n())
+
+#risk by categorical race
+preg_risk_data %>%
+  select(pregnancy_risk, race) %>%
+  filter(pregnancy_risk == 1) %>% 
+  group_by(race) %>%
+  summarize(count = n())
+
+#risk by insurance
+pregnancy_binary_data %>%
+  select(pregnancy_risk, insurance) %>%
+  filter(pregnancy_risk == 1) %>% 
+  group_by(insurance) %>%
+  summarize(count = n())
+```
+
+```{r}
+# payment counts
+pregnancy_binary_data %>%
+  select(insurance) %>%
+  group_by(insurance) %>%
+  summarise(pay_count = n())
+```
+```{r}
+# binary race counts
+pregnancy_binary_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+```{r}
+# categorical race counts
+preg_risk_data %>%
+  select(race) %>%
+  group_by(race) %>%
+  summarise(race_count = n())
+```
+
+
+#Simple Model
+
+First we fit our most simple model, which includes the binary variables of health insurance and race, adjusting for age and marital status.
+
+```{r logistic-regression-simple-model}
+set.seed(84735)
+risk_simple_model <- stan_glm(
+  pregnancy_risk ~ race + insurance + age + marital, 
+  data = pregnancy_binary_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r simple-model-summary}
+simple_model_summary <- summary(risk_simple_model)
+head(as.data.frame(simple_model_summary),-2)
+```
+
+```{r simple-model-odds}
+#means
+exp(0.2664565) #race
+exp(0.6201262) #insurance
+```
+
+Adjusting for age, marital status, and insurance, the odds that a non-white person has increased risk during pregnancy is an average of 1.3 times the odds that a white person has increased risk.
+
+Adjusting for age, marital status, and race, the odds that someone with insurance has increased risk during pregnancy is an average of 1.86 times the odds that someone without insurance has increased risk.
+
+```{r simple-model-intervals}
+#credible intervals
+exp(c(0.1847, 0.3475453)) #race
+exp(c(0.4112, 0.8310631)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a non-white person has increased risk during pregnancy is between 1.2 and 1.4 times the odds that a white person has increased risk.
+
+Adjusting for age, marital status, and race, there is an 80% posterior probability that the odds that someone who has insurance has increased risk during pregnancy is between 1.51 and 2.29 times the odds that someone who does not have insurance has increased risk.
+
+```{r simple-model-dens}
+#density and trace plots of simple model
+mcmc_dens(risk_simple_model)
+mcmc_trace(risk_simple_model)
+```
+
+#Complicated Model
+
+We will not interpret the results but just use this to perform comparison tests to see if this is  better than the simple model. If it's better then we could interpret. 
+
+Slightly more complicated model with interaction term between binary variables of race and insurance. 
+```{r complicated-model}
+set.seed(84735)
+complicated_risk_model <- stan_glm(
+  pregnancy_risk ~ race + insurance + age + marital + race*insurance, 
+  data = pregnancy_binary_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Summary of interaction model. 
+```{r complicated-model-summary}
+complicated_model_summary <- summary(complicated_risk_model)
+head(as.data.frame(complicated_model_summary),-2)
+```
+
+```{r complicated-model-dens}
+#density and trace plots of complicated model
+mcmc_dens(complicated_risk_model)
+mcmc_trace(complicated_risk_model)
+```
+
+# Race Model
+```{r logistic-regression-model}
+set.seed(84735)
+race_risk_model <- stan_glm(
+  pregnancy_risk ~ race + insurance + age + marital, 
+  data = preg_risk_data, family = binomial,
+  chains = 4, iter = 5000*2)
+```
+
+Next, we wanted to summarize our model.
+```{r race-model-summary}
+race_model_summary <- summary(race_risk_model)
+head(as.data.frame(race_model_summary),-2)
+```
+
+```{r odds-of-mean}
+#mean
+exp(c(0.2180731, 0.2351377, 0.2788102)) #native american, asian, black
+exp(c(0.6215643)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, the odds that someone who is Native American has increased risk during pregnancy is an average of 1.24 times the odds that someone who is white has increased risk.
+
+Adjusting for age, marital status, and insurance, the odds that someone who is Asian or Pacific Islander has increased risk during pregnancy is an average of 1.26 times the odds that someone who is white has increased risk.
+
+Adjusting for age, marital status, and insurance, the odds that someone who is 
+Black has increased risk during pregnancy is an average of 1.32 times the odds that someone who is white has increased risk.
+
+Adjusting for age, marital status, and race, the odds that someone with insurance experiences increased risk during pregnancy is an average 1.86 times the odds that someone without insurance has increased risk.
+
+```{r odds-of-interval}
+#credible intervals
+exp(c(-0.10750214, 0.5343003)) #native american
+exp(c(0.09083989, 0.3781204)) #asian or pacific islander
+exp(c(0.18496426, 0.3727168)) #black
+exp(c(0.41427921, 0.8367461)) #insurance
+```
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a Native American has increased risk during pregnancy is between 0.89 and 1.71 times the odds that a white person has increased risk.
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that an Asian person or Pacific Islander has increased risk during pregnancy is between 1.09 and 1.46 times the odds that someone who is white has increased risk.
+
+Adjusting for age, marital status, and insurance, there is an 80% posterior probability that the odds that a Black person has increased risk during pregnancy is between 1.2 and 1.45 times the odds that a white person has increased risk.
+
+Adjusting for age, marital status, and race, there is an 80% posterior probability that the odds that someone with insurance has increased risk during pregnancy is between 1.51 and 2.3 times the odds that someone without insurance has increased risk.
+
+```{r race-model-density}
+#density and trace plots of race model
+mcmc_dens(race_risk_model)
+mcmc_trace(race_risk_model)
+```
+
+#comparison of models using ELPD
+```{r}
+loo_1 <- loo(risk_simple_model)
+loo_2 <- loo(complicated_risk_model)
+loo_3 <- loo(race_risk_model)
+loo_compare(loo_1, loo_2, loo_3)
+```
+

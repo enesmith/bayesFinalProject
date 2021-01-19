@@ -1,6 +1,6 @@
 ---
-title: "Untitled"
-author: "Neamat Sabry"
+title: "SDS 390 Final Project"
+author: "Neamat Sabry, Annabel Yim, Isabel Gomez, Elisabeth Nesmith"
 date: "11/29/2020"
 output: html_document
 ---
@@ -11,7 +11,7 @@ output: html_document
 # install.packages(c("haven", "sas7bdat"))
 # library(sas7bdat)
 # library(haven)
-# 
+#
 # data <- read_sas("natl2018.sas7bdat")
 # View(data)
 ```
@@ -21,6 +21,55 @@ output: html_document
 ```{r}
 # install.packages("foreign")
 library(foreign)
-statadata <- read.dta("natl2018.dta")
-View(statadata)
+statadata <- read.dta("natl2018.dta copy")
+```
+
+## Wrangled Dataframe
+```{r}
+library(tidyverse)
+set.seed(84735)
+birth_data <- sample_n(statadata, 10000)
+
+write.csv(birth_data, "birth_data_10,000.csv")
+```
+
+```{r}
+# create new_payment variable, 1 = insurance, 0 = no insurance, and new_race variable, 1 = non white and 0 = white
+birth_data1 <- birth_data %>%
+  select(mbrace, pay, no_mmorb, mager9, dmar) %>%
+  filter(no_mmorb != 9, pay != c(8,9)) %>%
+  mutate(
+    new_payment =
+     ifelse(pay %in% c(1, 2, 4, 5, 6), 1, 0)
+         ) %>% 
+   mutate(new_race = 
+            ifelse(mbrace %in% c(2, 3, 4), 1, 0))
+
+write.csv(birth_data1, "birth_data1.csv")
+    
+```
+
+## Analysis
+```{r}
+# morbidity reporting counts, 0 means maternal morbidity, 1 means no maternal morbidity
+birth_data1 %>%
+  select(no_mmorb) %>%
+  group_by(no_mmorb) %>%
+  summarize(mmorb_count = n())
+```
+
+```{r}
+# payment counts
+birth_data1 %>%
+  select(new_payment) %>%
+  group_by(new_payment) %>%
+  summarise(pay_count = n())
+```
+
+```{r}
+# race counts
+birth_data1 %>%
+  select(new_race) %>%
+  group_by(new_race) %>%
+  summarise(race_count = n())
 ```
